@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using System.Linq;
 using System.Text;
 
 namespace com.defrobo.cryptopals.tests
@@ -20,6 +21,16 @@ namespace com.defrobo.cryptopals.tests
             byte[] right = Crypto.HexStringToByteArray("686974207468652062756c6c277320657965");
             var result = Crypto.FixedXOR(left, right);
             Assert.AreEqual("the kid don't play", Encoding.UTF8.GetString(result));
+        }
+
+        [Test]
+        public void Challenge3()
+        {
+            var candidates = Crypto.BuildXORCipherRangeForScoring(
+                Crypto.HexStringToByteArray(
+                    "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"));
+            var bestScore = Crypto.ScoreCryptograms(candidates);
+            Assert.AreEqual("Cooking MC's like a pound of bacon", bestScore);
         }
     }
 }
