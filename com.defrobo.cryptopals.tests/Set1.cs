@@ -1,6 +1,9 @@
 ﻿using NUnit.Framework;
+using System.Collections.Concurrent;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace com.defrobo.cryptopals.tests
 {
@@ -31,6 +34,21 @@ namespace com.defrobo.cryptopals.tests
                     "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"));
             var bestScore = Crypto.ScoreCryptograms(candidates);
             Assert.AreEqual("Cooking MC's like a pound of bacon", bestScore);
+        }
+
+        [Test]
+        public void Challenge4()
+        {
+            var lines = File.ReadAllLines(TestContext.CurrentContext.TestDirectory + "\\resources\\4.txt");
+            var linesAsBytes = lines.Select(s => Crypto.HexStringToByteArray(s)).ToList();
+            var solves = new ConcurrentStack<byte[]>();
+            Parallel.ForEach(linesAsBytes, line =>
+            {
+                Crypto.BuildXORCipherRangeForScoring(line);
+                solves.PushRange(Crypto.BuildXORCipherRangeForScoring(line).ToArray());
+            });
+            var result = Crypto.ScoreCryptograms(solves);
+            Assert.AreEqual("Now that the party is jumping\n", Encoding.UTF8.GetString(result));
         }
     }
 }
