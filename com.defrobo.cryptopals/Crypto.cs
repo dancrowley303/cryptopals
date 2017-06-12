@@ -15,6 +15,34 @@ namespace com.defrobo.cryptopals
             }
         }
 
+        public static T[][] SplitIntoMatrix<T>(this T[] input, int size)
+        {
+            var output = new List<T[]>();
+            for (var i = 0; i < input.Length; i += size)
+            {
+                var sizeToCopy = Math.Min(input.Length - i, size);
+                var newSegment = new T[size];
+                Array.Copy(input, i, newSegment, 0, sizeToCopy);
+                output.Add(newSegment);
+            }
+            return output.ToArray();
+        }
+
+        public static T[][] Transpose<T>(this T[][] input, int keySize)
+        {
+            var output = new List<T[]>();
+            for (var i = 0; i < keySize; i++)
+            {
+                var segment = new T[input.Length];
+                for (var j = 0; j < input.Length; j++)
+                {
+                    segment[j] = input[j][i];
+                }
+                output.Add(segment);
+            }
+            return output.ToArray();
+        }
+
         public static byte[] FixedXOR(byte[] left, byte[] right)
         {
             if (left.Length != right.Length)
@@ -34,12 +62,12 @@ namespace com.defrobo.cryptopals
             return Convert.ToBase64String(hexSplit);
         }
 
-        public static List<byte[]> BuildXORCipherRangeForScoring(byte[] input)
+        public static Dictionary<char, byte[]> BuildXORCipherRangeForScoring(byte[] input)
         {
-            var xored = new List<byte[]>();
+            var xored = new Dictionary<char, byte[]>();
             for (char i = ' '; i <= '~'; i++)
             {
-                xored.Add(SingleByteXORCipher(i, input));
+                xored.Add(i, SingleByteXORCipher(i, input));
             }
             return xored;
         }
@@ -99,6 +127,87 @@ namespace com.defrobo.cryptopals
             ['q'] = 2,
             ['z'] = 1
         };
+
+        public static byte[] BreakRepeatingKeyXOR(byte[] input)
+        {
+            var keySize = FindLowestNormalizedEditDistanceKeySize(input);
+            var transposed = input.SplitIntoMatrix(keySize).Transpose(keySize);
+            var key = FindVignereKey(transposed, keySize);
+            return EncryptRepeatingKeyXOR(key, input);
+        }
+
+        private static byte[] FindVignereKey(byte[][] transposed, int keySize)
+        {
+            var key = new byte[keySize];
+
+            for (var i = 0; i < transposed.Length; i++)
+            {
+                var candidates = BuildXORCipherRangeForScoring(transposed[i]);
+                var bestChar = '\0';
+                var bestScore = 0m;
+                foreach(var candidate in candidates)
+                {
+                    var score = ScoreEnglishFrequency(candidate.Value);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestChar = candidate.Key;
+                    }
+                }
+                key[i] = (byte)bestChar;
+            }
+            return key;
+        }
+
+        private static int FindLowestNormalizedEditDistanceKeySize(byte[] input)
+        {
+            var lowestKeySize = 0;
+            var lowestNormalizedEditDistance = Decimal.MaxValue;
+
+            for (var keySize = 2; keySize <= 40; keySize++)
+            {
+                var calculationCount = 0;
+                var hammingDistance = 0;
+                //Crptopals says you can just look at the first couple of blocks, but I needed to
+                //average every block to get meaningful calcs
+                for (var i = 1; i < input.Length / keySize; i++)
+                {
+                    var left = new ArraySegment<byte>(input, keySize * (i - 1), keySize).ToArray();
+                    var right = new ArraySegment<byte>(input, keySize * i, keySize).ToArray();
+                    hammingDistance += HammingDistance(left, right);
+                    calculationCount++;
+                }
+                var normalizedEditDistance = (decimal)hammingDistance / (decimal)calculationCount / (decimal)keySize;
+                if (normalizedEditDistance < lowestNormalizedEditDistance)
+                {
+                    lowestNormalizedEditDistance = normalizedEditDistance;
+                    lowestKeySize = keySize;
+                }
+            }
+            return lowestKeySize;
+        }
+
+        public static int HammingDistance(byte[] left, byte[] right)
+        {
+            if (left.Length != right.Length)
+                throw new ArgumentException("left and right parameters must be same length");
+
+            var score = 0;
+
+            for (var i = 0; i < left.Length; i++)
+            {
+                var distance = 0;
+                var val = left[i] ^ right[i];
+                while (val != 0)
+                {
+                    distance++;
+                    //this clears the lowest order nonzero bit
+                    val &= val - 1;
+                }
+                score += distance;
+            }
+            return score;
+        }
 
         public static string PrettyPrintHex(byte[] input)
         {
