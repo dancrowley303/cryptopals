@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace com.defrobo.cryptopals
 {
@@ -98,6 +99,27 @@ namespace com.defrobo.cryptopals
             ['q'] = 2,
             ['z'] = 1
         };
+
+        public static string PrettyPrintHex(byte[] input)
+        {
+            var sb = new StringBuilder(input.Length * 2);
+            for (var i = 0; i < input.Length; i++)
+            {
+                sb.AppendFormat("{0:x2}", input[i]);
+            }
+            return sb.ToString();
+        }
+
+        public static byte[] EncryptRepeatingKeyXOR(byte[] key, byte[] input)
+        {
+            var keyLength = key.Length;
+            var output = new byte[input.Length];
+            for (var i = 0; i < input.Length; i++)
+            {
+                output[i] = (byte)(input[i] ^ key[i % keyLength]);
+            }
+            return output;
+        }
 
         public static byte[] HexStringToByteArray(string input)
         {
