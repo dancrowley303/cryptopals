@@ -277,6 +277,34 @@ namespace com.defrobo.cryptopals
             }
         }
 
+        //rawInput is a collection of hex strings
+        public static string DetectAESInECBMode(string[] rawInput)
+        {
+            var lowestKeyCount = int.MaxValue;
+            var lowestKeyCountKey = "";
+
+            foreach (var line in rawInput)
+            {
+                var bytes = HexStringToByteArray(line);
+                var scoreCount = new Dictionary<string, int>();
+                for (var i = 0; i < bytes.Length; i += 16)
+                {
+                    var block = new ArraySegment<byte>(bytes, i, 16).ToArray();
+                    var key = PrettyPrintHex(block);
+                    if (!scoreCount.ContainsKey(key))
+                        scoreCount[key] = 1;
+                    else
+                        scoreCount[key]++;
+                }
+                if (scoreCount.Keys.Count < lowestKeyCount)
+                {
+                    lowestKeyCount = scoreCount.Keys.Count;
+                    lowestKeyCountKey = line;
+                }
+            }
+            return lowestKeyCountKey;
+        }
+
         public static void ShiftLeft<T>(this T[] block, int shift)
         {
             //stops overhead if shifts > block length
