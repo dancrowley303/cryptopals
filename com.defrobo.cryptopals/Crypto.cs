@@ -144,6 +144,23 @@ namespace com.defrobo.cryptopals
                 return output.ToArray();
             }
 
+            public static byte[] EncryptCBC(byte[] input, byte[] key, byte[] iv)
+            {
+                var output = new List<byte>();
+                var expandedKey = KeySchedule(key);
+                var lastBlock = new byte[iv.Length];
+                Array.Copy(iv, lastBlock, iv.Length);
+                for (var i = 0; i < input.Length / 16; i++)
+                {
+                    var block = new ArraySegment<byte>(input, i * 16, 16).ToArray();
+                    var xoredBlock = FixedXOR(block, lastBlock);
+                    var encryptedBlock = EncryptBlock(xoredBlock, expandedKey);
+                    output.AddRange(encryptedBlock);
+                    lastBlock = encryptedBlock;
+                }
+                return output.ToArray();
+            }
+
             public static byte[] DecryptECB(byte[] input, byte[] key)
             {
                 var expandedKey = KeySchedule(key);
@@ -152,6 +169,18 @@ namespace com.defrobo.cryptopals
                 {
                     var block = new ArraySegment<byte>(input, i * 16, 16).ToArray();
                     output.AddRange(DecryptBlock(block, expandedKey));
+                }
+                return output.ToArray();
+            }
+
+            public static byte[] EncryptECB(byte[] input, byte[] key)
+            {
+                var expandedKey = KeySchedule(key);
+                var output = new List<byte>();
+                for (var i = 0; i < input.Length / 16; i++)
+                {
+                    var block = new ArraySegment<byte>(input, i * 16, 16).ToArray();
+                    output.AddRange(EncryptBlock(block, expandedKey));
                 }
                 return output.ToArray();
             }
@@ -169,6 +198,24 @@ namespace com.defrobo.cryptopals
                 InvShiftRows(state);
                 InvSubBytes(state);
                 roundKey = CreateRoundKey(expandedKey, 0);
+                AddRoundKey(state, roundKey);
+
+                return OutputFromState(state);
+            }
+
+            public static byte[] EncryptBlock(byte[] input, byte[] expandedKey)
+            {
+                var state = StateFromInput(input);
+                var roundKey = CreateRoundKey(expandedKey, 0);
+                AddRoundKey(state, roundKey);
+                for (var i = 1; i < 10; i++)
+                {
+                    roundKey = CreateRoundKey(expandedKey, i);
+                    AESRound(state, roundKey);
+                }
+                ShiftRows(state);
+                SubBytes(state);
+                roundKey = CreateRoundKey(expandedKey, 10);
                 AddRoundKey(state, roundKey);
 
                 return OutputFromState(state);
@@ -218,12 +265,27 @@ namespace com.defrobo.cryptopals
                 return new ArraySegment<byte>(expandedKey, round * 16, 16).ToArray();
             }
 
+            private static void AESRound(byte[][] state, byte[] roundKey)
+            {
+                SubBytes(state);
+                ShiftRows(state);
+                MixColumns(state);
+                AddRoundKey(state, roundKey);
+            }
+
             private static void InvAESRound(byte[][] state, byte[] roundKey)
             {
                 InvShiftRows(state);
                 InvSubBytes(state);
                 AddRoundKey(state, roundKey);
                 InvMixColumns(state);
+            }
+
+            private static void ShiftRows(byte[][] state)
+            {
+                state[1].ShiftLeft(1);
+                state[2].ShiftLeft(2);
+                state[3].ShiftLeft(3);
             }
 
             private static void InvShiftRows(byte[][] state)
@@ -233,6 +295,17 @@ namespace com.defrobo.cryptopals
                 state[3].ShiftRight(3);
             }
 
+            private static void SubBytes(byte[][] state)
+            {
+                for (var row = 0; row < 4; row++)
+                {
+                    for (var col = 0; col < 4; col++)
+                    {
+                        state[row][col] = sbox[state[row][col]];
+
+                    }
+                }
+            }
             private static void InvSubBytes(byte[][] state)
             {
                 for (var row = 0; row < 4; row++)
@@ -241,6 +314,23 @@ namespace com.defrobo.cryptopals
                     {
                         state[row][col] = sboxInv[state[row][col]];
 
+                    }
+                }
+            }
+
+            private static void MixColumns(byte[][] state)
+            {
+                for (var col = 0; col < 4; col++)
+                {
+                    var column = new byte[4];
+                    for (var row = 0; row < 4; row++)
+                    {
+                        column[row] = state[row][col];
+                    }
+                    GmixColumn(column);
+                    for (var row = 0; row < 4; row++)
+                    {
+                        state[row][col] = column[row];
                     }
                 }
             }
@@ -260,6 +350,16 @@ namespace com.defrobo.cryptopals
                         state[row][col] = column[row];
                     }
                 }
+            }
+
+            private static void GmixColumn(byte[] column)
+            {
+                var a = new byte[4];
+                Array.Copy(column, a, 4);
+                column[0] = (byte)(Gmul(a[0], 2) ^ Gmul(a[3], 1) ^ Gmul(a[2], 1) ^ Gmul(a[1], 3));
+                column[1] = (byte)(Gmul(a[1], 2) ^ Gmul(a[0], 1) ^ Gmul(a[3], 1) ^ Gmul(a[2], 3));
+                column[2] = (byte)(Gmul(a[2], 2) ^ Gmul(a[1], 1) ^ Gmul(a[0], 1) ^ Gmul(a[3], 3));
+                column[3] = (byte)(Gmul(a[3], 2) ^ Gmul(a[2], 1) ^ Gmul(a[1], 1) ^ Gmul(a[0], 3));
             }
 
             private static void InvGmixColumn(byte[] column)
