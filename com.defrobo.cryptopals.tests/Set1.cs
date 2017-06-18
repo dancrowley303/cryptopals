@@ -67,5 +67,13 @@ namespace com.defrobo.cryptopals.tests
             var result = Crypto.BreakRepeatingKeyXOR(text);
             Assert.IsTrue(Encoding.UTF8.GetString(result).Contains("Play that funky music"));
         }
+
+        [Test]
+        public void Challenge7()
+        {
+            var encrypted = Convert.FromBase64String(File.ReadAllText(TestContext.CurrentContext.TestDirectory + "\\resources\\7.txt"));
+            var output = Encoding.UTF8.GetString(Crypto.AES128.DecryptECB(encrypted, Encoding.UTF8.GetBytes("YELLOW SUBMARINE")));
+            Assert.IsTrue(output.StartsWith("I'm back and I'm ringin' the bell"));
+        }
     }
 }
