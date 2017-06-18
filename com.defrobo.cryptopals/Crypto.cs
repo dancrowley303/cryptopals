@@ -277,6 +277,24 @@ namespace com.defrobo.cryptopals
             }
         }
 
+        public static byte[] BlockPad(byte[] input, int blockSize)
+        {
+            var output = new byte[blockSize];
+            if (input.Length == blockSize)
+                Array.Copy(input, output, blockSize);
+            else
+            {
+                //ignores cases where block length is larger than requested block size
+                Array.Copy(input, output, input.Length);
+                int padding = blockSize - input.Length;
+                for (int i = 0; i < padding; i++)
+                {
+                    output[input.Length + i] = (byte)padding;
+                }
+            }
+            return output;
+        }
+
         //rawInput is a collection of hex strings
         public static string DetectAESInECBMode(string[] rawInput)
         {
