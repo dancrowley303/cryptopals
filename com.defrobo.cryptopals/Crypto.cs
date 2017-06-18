@@ -126,6 +126,24 @@ namespace com.defrobo.cryptopals
                 return output;
             }
 
+            public static byte[] DecryptCBC(byte[] input, byte[] key, byte[] iv)
+            {
+                var output = new List<byte>();
+                var expandedKey = KeySchedule(key);
+                var lastBlock = new byte[iv.Length];
+                Array.Copy(iv, lastBlock, iv.Length);
+                for (var i = 0; i < input.Length / 16; i++)
+                {
+                    var block = new ArraySegment<byte>(input, i * 16, 16).ToArray();
+                    var cipherBlock = new byte[block.Length];
+                    Array.Copy(block, cipherBlock, block.Length);
+                    var decryptedBlock = DecryptBlock(block, expandedKey);
+                    output.AddRange(FixedXOR(decryptedBlock, lastBlock));
+                    lastBlock = cipherBlock;
+                }
+                return output.ToArray();
+            }
+
             public static byte[] DecryptECB(byte[] input, byte[] key)
             {
                 var expandedKey = KeySchedule(key);
