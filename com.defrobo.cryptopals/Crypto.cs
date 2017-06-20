@@ -7,6 +7,7 @@ namespace com.defrobo.cryptopals
 {
     public static partial class Crypto
     {
+        private static Random random = new Random(DateTime.Now.Millisecond);
 
         public static byte[] BlockPad(byte[] input, int blockSize)
         {
@@ -304,6 +305,59 @@ namespace com.defrobo.cryptopals
             return input.SplitInParts(2)
                  .Select(s => (byte)Convert.ToInt32(s, 16))
                  .ToArray();        
+        }
+
+        public static byte[] RandomAES128Key()
+        {
+            var buffer = new byte[16];
+            random.NextBytes(buffer);
+            return buffer;
+        }
+
+        public static byte[] AESEncryptionOracle(byte[] input, out bool isECB)
+        {
+            var randomKey = RandomAES128Key();
+
+            var randomPrefixLength = random.Next(5, 11);
+            var randomPrefixBuffer = new byte[randomPrefixLength];
+            random.NextBytes(randomPrefixBuffer);
+
+            var randomSuffixLength = random.Next(5, 11);
+            var randomSuffixBuffer = new byte[randomSuffixLength];
+            random.NextBytes(randomSuffixBuffer);
+
+            var paddedInput = new byte[randomPrefixLength + input.Length + randomSuffixLength];
+            Array.Copy(randomPrefixBuffer, 0, paddedInput, 0, randomPrefixLength);
+            Array.Copy(input, 0, paddedInput, randomPrefixLength, input.Length);
+            Array.Copy(randomSuffixBuffer, 0, paddedInput, randomPrefixLength + input.Length, randomSuffixLength);
+
+            if (paddedInput.Length % 16 != 0)
+            {
+                paddedInput = BlockPad(paddedInput, paddedInput.Length + (16 - paddedInput.Length % 16));
+            }
+
+            isECB = random.Next(0, 2) == 1;
+
+            if (isECB)
+            {
+                return AES128.EncryptECB(paddedInput, randomKey);
+            } else
+            {
+                var iv = RandomAES128Key();
+                return AES128.EncryptCBC(paddedInput, randomKey, iv);
+            }
+        }
+
+        public static bool ECBDetectionOracle(byte[] input)
+        {
+            var inputLength = input.Length;
+            Console.WriteLine(inputLength);
+            if (inputLength < 64)
+                throw new ArgumentException("input buffer must be 64 or more bytes");
+            var second = new ArraySegment<byte>(input, 16, 16).ToArray();
+            var third = new ArraySegment<byte>(input, 32, 16).ToArray();
+
+            return second.SequenceEqual(third);
         }
     }
 }

@@ -25,5 +25,15 @@ namespace com.defrobo.cryptopals.tests
             var output = Encoding.UTF8.GetString(AES128.DecryptCBC(encrypted, key, iv));
             Assert.IsTrue(output.StartsWith("I'm back and I'm ringin' the bell"));
         }
+
+        [Test]
+        public void Challenge11()
+        {
+            bool isECB;
+            var input = Encoding.UTF8.GetBytes("YELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINE");
+            var output = Crypto.AESEncryptionOracle(input, out isECB);
+            var detectedECB = Crypto.ECBDetectionOracle(output);
+            Assert.AreEqual(isECB, detectedECB);
+        }
     }
 }
