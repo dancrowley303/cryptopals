@@ -22,7 +22,7 @@ namespace com.defrobo.cryptopals.tests
             var encrypted = Convert.FromBase64String(File.ReadAllText(TestContext.CurrentContext.TestDirectory + "\\resources\\10.txt"));
             var key = Encoding.UTF8.GetBytes("YELLOW SUBMARINE");
             var iv = Encoding.UTF8.GetBytes("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
-            var output = Encoding.UTF8.GetString(Crypto.AES128.DecryptCBC(encrypted, key, iv));
+            var output = Encoding.UTF8.GetString(AES128.DecryptCBC(encrypted, key, iv));
             Assert.IsTrue(output.StartsWith("I'm back and I'm ringin' the bell"));
         }
     }
