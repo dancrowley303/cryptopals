@@ -359,5 +359,37 @@ namespace com.defrobo.cryptopals
 
             return second.SequenceEqual(third);
         }
+
+        public static byte[] EncryptAES128ECBWithUnknownString(byte[] input, byte[] randomKey)
+        {
+            var unknown = Convert.FromBase64String("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK");
+            var payload = new byte[input.Length + unknown.Length];
+            input.CopyTo(payload, 0);
+            unknown.CopyTo(payload, input.Length);
+            return AES128.EncryptECB(payload, randomKey);
+        }
+
+        public static int DiscoverBlockSizeOfAESECBCipher(byte[] randomKey)
+        {
+            var i = 1;
+            byte[] lastBlock = new byte[1];
+            lastBlock[0] = 0x00;
+
+            while (true)
+            {
+                var input = Encoding.UTF8.GetBytes(new String('A', i+1));
+                var output = EncryptAES128ECBWithUnknownString(input, randomKey);
+
+                var inspectOutput = new ArraySegment<byte>(output, 0, i).ToArray();
+                var inspectLastBlock = new ArraySegment<byte>(lastBlock, 0, i).ToArray();
+                if (inspectOutput.SequenceEqual<byte>(inspectLastBlock))
+                    return i;
+                else
+                {
+                    i++;
+                    lastBlock = output;
+                }
+            }
+        }
     }
 }
