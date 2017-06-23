@@ -391,5 +391,35 @@ namespace com.defrobo.cryptopals
                 }
             }
         }
+
+        public static string ByteAtATimeECBDecryptionSimple()
+        {
+            var randomKey = Crypto.RandomAES128Key();
+            var cipherBlockSize = Crypto.DiscoverBlockSizeOfAESECBCipher(randomKey);
+            var cipherSearchBlockSize = cipherBlockSize * 20;
+            var foundText = new StringBuilder();
+
+
+            for (var i = cipherSearchBlockSize - 1; i > 0; i--)
+            {
+                var plainText = Encoding.UTF8.GetBytes(new string('A', i));
+                var cipherText = Crypto.EncryptAES128ECBWithUnknownString(plainText, randomKey);
+                if (cipherText.Length < cipherSearchBlockSize) break;
+                var cipherTextTruncated = new ArraySegment<byte>(cipherText, 0, cipherSearchBlockSize).ToArray();
+                var searchCiphers = new Dictionary<string, char>();
+                for (char j = (char)0x00; j <= (char)0xFF; j++)
+                {
+                    var searchBlock = new byte[cipherSearchBlockSize];
+                    plainText.CopyTo(searchBlock, 0);
+                    Encoding.UTF8.GetBytes(foundText.ToString()).CopyTo(searchBlock, plainText.Length);
+                    searchBlock[searchBlock.Length - 1] = (byte)j;
+                    var searchBlockEnc = Crypto.EncryptAES128ECBWithUnknownString(searchBlock, randomKey);
+                    searchCiphers[Encoding.UTF8.GetString(new ArraySegment<byte>(searchBlockEnc, 0, cipherSearchBlockSize).ToArray())] = j;
+                }
+                foundText.Append(searchCiphers[Encoding.UTF8.GetString(cipherTextTruncated)]);
+            }
+
+            return foundText.ToString();
+        }
     }
 }
