@@ -57,24 +57,28 @@ namespace com.defrobo.cryptopals
 
         public static void ShiftLeft<T>(this T[] block, int shift)
         {
+            var blockLength = block.Length;
             //stops overhead if shifts > block length
-            shift = shift % block.Length;
+            shift = shift % blockLength;
 
             var buffer = new T[shift];
-            Array.Copy(block, buffer, shift);
-            Array.Copy(block, shift, block, 0, block.Length - shift);
-            Array.Copy(buffer, 0, block, block.Length - shift, shift);
+            Buffer.BlockCopy(block, 0, buffer, 0, shift);
+            Buffer.BlockCopy(block, shift, block, 0, blockLength - shift);
+            Buffer.BlockCopy(buffer, 0, block, blockLength - shift, shift);
         }
 
         public static void ShiftRight<T>(this T[] block, int shift)
         {
+            var blockLength = block.Length;
             //stops overhead if shifts > block length
-            shift = shift % block.Length;
+            shift = shift % blockLength;
 
             var buffer = new byte[shift];
-            Array.Copy(block, block.Length - shift, buffer, 0, shift);
-            Array.Copy(block, 0, block, shift, block.Length - shift);
-            Array.Copy(buffer, 0, block, 0, shift);
+
+            Buffer.BlockCopy(block, blockLength - shift, buffer, 0, shift);
+            Buffer.BlockCopy(block, 0, block, shift, blockLength - shift);
+            Buffer.BlockCopy(buffer, 0, block, 0, shift);
+
         }
 
         public static IEnumerable<String> SplitInParts(this String s, int partLength)

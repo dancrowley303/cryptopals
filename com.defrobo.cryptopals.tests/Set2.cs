@@ -40,8 +40,9 @@ namespace com.defrobo.cryptopals.tests
         public void Challenge12()
         {
             var plaintext = Crypto.ByteAtATimeECBDecryptionSimple();
-            var expected = "Rollin' in my 5.0\nWith my rag - top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by";
+            var expected = "Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n";
             Assert.AreEqual(expected, plaintext);
         }
+
     }
 }
