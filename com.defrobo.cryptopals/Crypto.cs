@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Web;
 
 namespace com.defrobo.cryptopals
 {
@@ -16,12 +17,12 @@ namespace com.defrobo.cryptopals
                 Array.Copy(input, output, blockSize);
             else
             {
-                //ignores cases where block length is larger than requested block size
+                var inputLength = input.Length;
+                var padLength = blockSize - inputLength;
                 Array.Copy(input, output, input.Length);
-                int padding = blockSize - input.Length;
-                for (int i = 0; i < padding; i++)
+                for (int i = inputLength; i < blockSize; i++)
                 {
-                    output[input.Length + i] = (byte)padding;
+                    output[i] = (byte)padLength;
                 }
             }
             return output;
@@ -424,6 +425,67 @@ namespace com.defrobo.cryptopals
             }
 
             return foundText.ToString();
+        }
+
+        public static Dictionary<string, string> ParseQuerystringToDictionary(string querystring)
+        {
+            var keyValPairs = HttpUtility.ParseQueryString(querystring);
+            var dictionary = new Dictionary<string, string>();
+            foreach (var key in keyValPairs.AllKeys)
+            {
+                dictionary[key] = keyValPairs[key];
+            }
+            return dictionary;
+        }
+
+        public static Dictionary<string, string> ProfileFor(string email)
+        {
+            var profile = new Dictionary<string, string>();
+            profile["email"] = email.Replace("&", "").Replace("=", "");
+            profile["uid"] = "10";
+            profile["role"] = "user";
+            return profile;
+        }
+
+        private static byte[] profileForOracleExtendedKey = AES128.KeySchedule(RandomAES128Key());
+
+        public static Dictionary<string, string> DecryptProfileFor(byte[] encrypted)
+        {
+            var decrypted = new byte[encrypted.Length];
+            for (var i = 0; i < encrypted.Length / 16; i++)
+            {
+                var block = new ArraySegment<byte>(encrypted, i * 16, 16).ToArray();
+                var decryptedBlock = AES128.DecryptBlock(block, profileForOracleExtendedKey);
+                Array.Copy(decryptedBlock, 0, decrypted, i * 16, 16);
+            }
+            var encoded = Encoding.UTF8.GetString(decrypted);
+            var pad = (int)decrypted[decrypted.Length - 1];
+            if (pad < 0x0f)
+            {
+                encoded = encoded.Substring(0, encoded.Length - pad);
+            }
+            return ParseQuerystringToDictionary(encoded);
+        }
+
+        public static string EncodeProfileAsKeyVal(Dictionary<string, string> profile)
+        {
+            return string.Format("email={0}&uid={1}&role={2}", profile["email"], profile["uid"], profile["role"]);
+        }
+
+        public static byte[] EncryptProfileFor(string email)
+        {
+            var profile = ProfileFor(email);
+            var encodedProfile = EncodeProfileAsKeyVal(profile);
+            var profileBytes = Encoding.UTF8.GetBytes(encodedProfile);
+            var profileBlocks = BlockPad(profileBytes, profileBytes.Length + 16 - profileBytes.Length % 16);
+            var output = new byte[profileBlocks.Length];
+            for (var i = 0; i < profileBlocks.Length / 16; i++)
+            {
+                var profileBlock = new ArraySegment<byte>(profileBlocks, i * 16, 16).ToArray();
+                var outputBlock = AES128.EncryptBlock(profileBlock, profileForOracleExtendedKey);
+                Array.Copy(outputBlock, 0, output, i * 16, 16);
+            }
+            return output;
         }
     }
 }

@@ -44,5 +44,20 @@ namespace com.defrobo.cryptopals.tests
             Assert.AreEqual(expected, plaintext);
         }
 
+        [Test]
+        public void Challenge13()
+        {
+            var payload = "xyz12@xyz.admin\u000b\u000b\u000b\u000b\u000b\u000b\u000b\u000b\u000b\u000b\u000bcom";
+            var encrypted = Crypto.EncryptProfileFor(payload);
+            var rearrange = new byte[48];
+            Array.Copy(encrypted, 0, rearrange, 0, 16);
+            Array.Copy(encrypted, 32, rearrange, 16, 16);
+            Array.Copy(encrypted, 16, rearrange, 32, 16);
+
+            var output = Crypto.DecryptProfileFor(rearrange);
+            Assert.AreEqual("xyz12@xyz.com", output["email"]);
+            Assert.AreEqual("admin", output["role"]);
+        }
+
     }
 }
