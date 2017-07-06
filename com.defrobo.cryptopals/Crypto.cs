@@ -10,6 +10,9 @@ namespace com.defrobo.cryptopals
     {
         private static Random random = new Random(DateTime.Now.Millisecond);
 
+        private static byte[] randomKey = Crypto.RandomAES128Key();
+
+
         public static byte[] BlockPad(byte[] input, int blockSize)
         {
             var output = new byte[blockSize];
@@ -321,8 +324,6 @@ namespace com.defrobo.cryptopals
 
         public static byte[] AESEncryptionOracle(byte[] input, out bool isECB)
         {
-            var randomKey = RandomAES128Key();
-
             var randomPrefixLength = random.Next(5, 11);
             var randomPrefixBuffer = new byte[randomPrefixLength];
             random.NextBytes(randomPrefixBuffer);
@@ -365,7 +366,7 @@ namespace com.defrobo.cryptopals
             return second.SequenceEqual(third);
         }
 
-        public static byte[] EncryptAES128ECBWithUnknownString(byte[] input, byte[] randomKey)
+        public static byte[] EncryptAES128ECBWithUnknownString(byte[] input)
         {
             var unknown = Convert.FromBase64String("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK");
             var payload = new byte[input.Length + unknown.Length];
@@ -374,7 +375,7 @@ namespace com.defrobo.cryptopals
             return AES128.EncryptECB(payload, randomKey);
         }
 
-        public static int DiscoverBlockSizeOfAESECBCipher(byte[] randomKey)
+        public static int DiscoverBlockSizeOfAESECBCipher()
         {
             var i = 1;
             byte[] lastBlock = new byte[1];
@@ -383,7 +384,7 @@ namespace com.defrobo.cryptopals
             while (true)
             {
                 var input = Encoding.UTF8.GetBytes(new String('A', i+1));
-                var output = EncryptAES128ECBWithUnknownString(input, randomKey);
+                var output = EncryptAES128ECBWithUnknownString(input);
 
                 var inspectOutput = new ArraySegment<byte>(output, 0, i).ToArray();
                 var inspectLastBlock = new ArraySegment<byte>(lastBlock, 0, i).ToArray();
@@ -399,8 +400,7 @@ namespace com.defrobo.cryptopals
 
         public static string ByteAtATimeECBDecryptionSimple()
         {
-            var randomKey = Crypto.RandomAES128Key();
-            var cipherBlockSize = Crypto.DiscoverBlockSizeOfAESECBCipher(randomKey);
+            var cipherBlockSize = Crypto.DiscoverBlockSizeOfAESECBCipher();
             var cipherSearchBlockSize = cipherBlockSize * 20;
             var foundText = new StringBuilder();
 
@@ -408,7 +408,7 @@ namespace com.defrobo.cryptopals
             for (var i = cipherSearchBlockSize - 1; i > 0; i--)
             {
                 var plainText = Encoding.UTF8.GetBytes(new string('A', i));
-                var cipherText = Crypto.EncryptAES128ECBWithUnknownString(plainText, randomKey);
+                var cipherText = Crypto.EncryptAES128ECBWithUnknownString(plainText);
                 if (cipherText.Length < cipherSearchBlockSize) break;
                 var cipherTextTruncated = new ArraySegment<byte>(cipherText, 0, cipherSearchBlockSize).ToArray();
                 var searchCiphers = new Dictionary<string, char>();
@@ -418,7 +418,7 @@ namespace com.defrobo.cryptopals
                     plainText.CopyTo(searchBlock, 0);
                     Encoding.UTF8.GetBytes(foundText.ToString()).CopyTo(searchBlock, plainText.Length);
                     searchBlock[searchBlock.Length - 1] = (byte)j;
-                    var searchBlockEnc = Crypto.EncryptAES128ECBWithUnknownString(searchBlock, randomKey);
+                    var searchBlockEnc = Crypto.EncryptAES128ECBWithUnknownString(searchBlock);
                     searchCiphers[Encoding.UTF8.GetString(new ArraySegment<byte>(searchBlockEnc, 0, cipherSearchBlockSize).ToArray())] = j;
                 }
                 foundText.Append(searchCiphers[Encoding.UTF8.GetString(cipherTextTruncated)]);
