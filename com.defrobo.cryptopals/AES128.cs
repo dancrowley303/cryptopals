@@ -292,6 +292,11 @@ namespace com.defrobo.cryptopals
 
         public static byte[] EncryptECB(byte[] input, byte[] key)
         {
+            if (input.Length % 16 != 0)
+            {
+                input = Crypto.BlockPad(input, input.Length + (16 - input.Length % 16));
+            }
+
             var expandedKey = KeySchedule(key);
             var output = new List<byte>();
             for (var i = 0; i < input.Length / 16; i++)

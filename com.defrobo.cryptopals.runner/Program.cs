@@ -12,13 +12,9 @@ namespace com.defrobo.cryptopals.runner
     {
         static void Main(string[] args)
         {
-            var payload = "daniel.crowley.wilson@gmail.com";
-            var encrypted = Crypto.EncryptProfileFor(payload);
-            var output = Crypto.DecryptProfileFor(encrypted);
-            foreach (var kvp in output)
-            {
-                Console.WriteLine("{0} = {1}", kvp.Key, kvp.Value);
-            }
+
+
+
         }
     }
-}
+} 

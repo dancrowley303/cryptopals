@@ -39,7 +39,7 @@ namespace com.defrobo.cryptopals.tests
         [Test]
         public void Challenge12()
         {
-            var plaintext = Crypto.ByteAtATimeECBDecryptionSimple();
+            var plaintext = Crypto.ByteAtATimeECBDecryption(simple: true);
             var expected = "Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n";
             Assert.AreEqual(expected, plaintext);
         }
@@ -57,6 +57,14 @@ namespace com.defrobo.cryptopals.tests
             var output = Crypto.DecryptProfileFor(rearrange);
             Assert.AreEqual("xyz12@xyz.com", output["email"]);
             Assert.AreEqual("admin", output["role"]);
+        }
+
+        [Test]
+        public void Challenge14()
+        {
+            var plaintext = Crypto.ByteAtATimeECBDecryption(simple: false);
+            var expected = "Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n";
+            Assert.AreEqual(expected, plaintext);
         }
 
     }

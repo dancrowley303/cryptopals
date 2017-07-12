@@ -11,7 +11,14 @@ namespace com.defrobo.cryptopals
         private static Random random = new Random(DateTime.Now.Millisecond);
 
         private static byte[] randomKey = Crypto.RandomAES128Key();
+        private static byte[] randomOraclePrefix = GenerateRandomOraclePrefix();
 
+        private static byte[] GenerateRandomOraclePrefix()
+        {
+            var randomBytes = new byte[random.Next(1,17)];
+            random.NextBytes(randomBytes);
+            return randomBytes;
+        }
 
         public static byte[] BlockPad(byte[] input, int blockSize)
         {
@@ -87,7 +94,7 @@ namespace com.defrobo.cryptopals
 
         public static IEnumerable<String> SplitInParts(this String s, int partLength)
         {
-            for (var i = 0; i < s.Length; i+=partLength)
+            for (var i = 0; i < s.Length; i += partLength)
             {
                 yield return s.Substring(i, Math.Min(partLength, s.Length - i));
             }
@@ -223,7 +230,7 @@ namespace com.defrobo.cryptopals
                 var candidates = BuildXORCipherRangeForScoring(transposed[i]);
                 var bestChar = '\0';
                 var bestScore = 0m;
-                foreach(var candidate in candidates)
+                foreach (var candidate in candidates)
                 {
                     var score = ScoreEnglishFrequency(candidate.Value);
                     if (score > bestScore)
@@ -297,6 +304,24 @@ namespace com.defrobo.cryptopals
             return sb.ToString();
         }
 
+        public static string PrettyPrinxHex2(byte[] input)
+        {
+            var sb = new StringBuilder(input.Length * 2);
+            for (var i = 0; i < input.Length; i++)
+            {
+                sb.AppendFormat("{0:x2}", input[i]);
+                if ((i + 1) % 16 == 0)
+                {
+                    sb.AppendFormat(" ");
+                }
+                else
+                {
+                    if ((i + 1) % 2 == 0) sb.AppendFormat("-");
+                }
+            }
+            return sb.ToString();
+        }
+
         public static byte[] EncryptRepeatingKeyXOR(byte[] key, byte[] input)
         {
             var keyLength = key.Length;
@@ -312,7 +337,7 @@ namespace com.defrobo.cryptopals
         {
             return input.SplitInParts(2)
                  .Select(s => (byte)Convert.ToInt32(s, 16))
-                 .ToArray();        
+                 .ToArray();
         }
 
         public static byte[] RandomAES128Key()
@@ -366,16 +391,32 @@ namespace com.defrobo.cryptopals
             return second.SequenceEqual(third);
         }
 
-        public static byte[] EncryptAES128ECBWithUnknownString(byte[] input)
+        public static byte[] RandomECBOracle(byte[] input)
         {
+            return ECBOracle(randomOraclePrefix, input);
+        }
+
+        public static byte[] NoRandomECBOracle(byte[] input)
+        {
+            return ECBOracle(null, input);
+        }
+
+        public static byte[] ECBOracle(byte[] randomPrefix, byte[] input)
+        {
+            var prefixLength = randomPrefix == null ? 0 : randomPrefix.Length;
+
             var unknown = Convert.FromBase64String("Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK");
-            var payload = new byte[input.Length + unknown.Length];
-            input.CopyTo(payload, 0);
-            unknown.CopyTo(payload, input.Length);
+            var payload = new byte[prefixLength + input.Length + unknown.Length];
+            if (prefixLength > 0)
+            {
+                randomPrefix.CopyTo(payload, 0);
+            }
+            input.CopyTo(payload, prefixLength);
+            unknown.CopyTo(payload, prefixLength + input.Length);
             return AES128.EncryptECB(payload, randomKey);
         }
 
-        public static int DiscoverBlockSizeOfAESECBCipher()
+        public static int DiscoverBlockSizeOfAESECBCipher(Func<byte[],byte[]> oracleFunction)
         {
             var i = 1;
             byte[] lastBlock = new byte[1];
@@ -384,7 +425,7 @@ namespace com.defrobo.cryptopals
             while (true)
             {
                 var input = Encoding.UTF8.GetBytes(new String('A', i+1));
-                var output = EncryptAES128ECBWithUnknownString(input);
+                var output = oracleFunction.Invoke(input);
 
                 var inspectOutput = new ArraySegment<byte>(output, 0, i).ToArray();
                 var inspectLastBlock = new ArraySegment<byte>(lastBlock, 0, i).ToArray();
@@ -398,17 +439,53 @@ namespace com.defrobo.cryptopals
             }
         }
 
-        public static string ByteAtATimeECBDecryptionSimple()
+        public static string ByteAtATimeECBDecryption(bool simple)
         {
-            var cipherBlockSize = Crypto.DiscoverBlockSizeOfAESECBCipher();
-            var cipherSearchBlockSize = cipherBlockSize * 20;
+            byte[] appendCipherOutput;
+            var appendCipherLength = 0;
+            var randomPrefixLength = 0;
+
+            Func<byte[], byte[]> oracleFunction;
+            if (!simple)
+            {
+                oracleFunction = RandomECBOracle;
+                string payload = "";
+                for (var i = 48; i < 64; i++)
+                {
+                    Console.WriteLine("({0})", i);
+                    payload = new string('A', i);
+                    var output = oracleFunction.Invoke(Encoding.UTF8.GetBytes(payload));
+                    var segLeft = new ArraySegment<byte>(output, 32, 16).ToArray();
+                    var segRight = new ArraySegment<byte>(output, 48, 16).ToArray();
+
+                    //assumes random section is 1-16 bytes
+                    if (new ArraySegment<byte>(output, 32, 16).ToArray().SequenceEqual(new ArraySegment<byte>(output, 48, 16).ToArray()))
+                    {
+                        randomPrefixLength = 16 - (i - 48);
+                        break;
+                    }
+                }
+                payload = new string('A', 16 - randomPrefixLength);
+                appendCipherOutput = oracleFunction(Encoding.UTF8.GetBytes(payload));
+            }
+            else
+            {
+                oracleFunction = NoRandomECBOracle;
+                appendCipherOutput = oracleFunction(new byte[] { });                
+            }
+
+            appendCipherLength = appendCipherOutput.Length - randomPrefixLength;
+
+            var cipherBlockSize = Crypto.DiscoverBlockSizeOfAESECBCipher(oracleFunction);
+            var cipherSearchBlockSize = appendCipherLength;
             var foundText = new StringBuilder();
 
+            char foundChar;
 
-            for (var i = cipherSearchBlockSize - 1; i > 0; i--)
+            for (var i = cipherSearchBlockSize - 1; i >= 0; i--)
             {
                 var plainText = Encoding.UTF8.GetBytes(new string('A', i));
-                var cipherText = Crypto.EncryptAES128ECBWithUnknownString(plainText);
+                var cipherText = oracleFunction.Invoke(plainText);
                 if (cipherText.Length < cipherSearchBlockSize) break;
                 var cipherTextTruncated = new ArraySegment<byte>(cipherText, 0, cipherSearchBlockSize).ToArray();
                 var searchCiphers = new Dictionary<string, char>();
@@ -418,10 +495,21 @@ namespace com.defrobo.cryptopals
                     plainText.CopyTo(searchBlock, 0);
                     Encoding.UTF8.GetBytes(foundText.ToString()).CopyTo(searchBlock, plainText.Length);
                     searchBlock[searchBlock.Length - 1] = (byte)j;
-                    var searchBlockEnc = Crypto.EncryptAES128ECBWithUnknownString(searchBlock);
+                    var searchBlockEnc = oracleFunction.Invoke(searchBlock);
                     searchCiphers[Encoding.UTF8.GetString(new ArraySegment<byte>(searchBlockEnc, 0, cipherSearchBlockSize).ToArray())] = j;
                 }
-                foundText.Append(searchCiphers[Encoding.UTF8.GetString(cipherTextTruncated)]);
+                foundChar = (char)0x00;
+                if (searchCiphers.TryGetValue(Encoding.UTF8.GetString(cipherTextTruncated), out foundChar))
+                {
+                    if (foundChar == '\u0001')
+                    {
+                        break;
+                    }
+                    foundText.Append(foundChar);
+                } else
+                {
+                    break;
+                }
             }
 
             return foundText.ToString();
