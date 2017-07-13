@@ -13,6 +13,25 @@ namespace com.defrobo.cryptopals
         private static byte[] randomKey = Crypto.RandomAES128Key();
         private static byte[] randomOraclePrefix = GenerateRandomOraclePrefix();
 
+        public static byte[] StripPadding(byte[] padded)
+        {
+            var lastChar = padded[padded.Length - 1];
+            if (lastChar <= 0x10)
+            {
+                var paddingLength = (int)lastChar;
+                for (var i = padded.Length-1; i >= padded.Length-paddingLength; i--)
+                {
+                    if (padded[i] != lastChar)
+                    {
+                        throw new ArgumentException(
+                            String.Format("character at position {0} was expected to by {1}, but was {2}", i, lastChar, padded[i]));
+                    }
+                }
+                return new ArraySegment<byte>(padded, 0, padded.Length - paddingLength).ToArray();
+            }
+            return padded;
+        }
+
         private static byte[] GenerateRandomOraclePrefix()
         {
             var randomBytes = new byte[random.Next(1,17)];

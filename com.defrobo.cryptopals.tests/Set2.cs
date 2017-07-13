@@ -67,5 +67,28 @@ namespace com.defrobo.cryptopals.tests
             Assert.AreEqual(expected, plaintext);
         }
 
+        [Test]
+        public void Challenge15()
+        {
+            var validNoPadding = "ICE ICE BABY";
+            var output = Crypto.StripPadding(Encoding.UTF8.GetBytes(validNoPadding));
+            Assert.AreEqual("ICE ICE BABY", Encoding.UTF8.GetString(output));
+
+            var validPadding = "ICE ICE BABY\x04\x04\x04\x04";
+            output = Crypto.StripPadding(Encoding.UTF8.GetBytes(validPadding));
+            Assert.AreEqual("ICE ICE BABY", Encoding.UTF8.GetString(output));
+
+            Assert.Catch(typeof(ArgumentException), () => {
+                var invalidPadding = "ICE ICE BABY\x05\x05\x05\x05";
+                Crypto.StripPadding(Encoding.UTF8.GetBytes(invalidPadding));
+            });
+
+            Assert.Catch(typeof(ArgumentException), () => {
+                var invalidPadding = "ICE ICE BABY\x01\x02\x03\x04";
+                Crypto.StripPadding(Encoding.UTF8.GetBytes(invalidPadding));
+            });
+
+        }
+
     }
 }
