@@ -12,9 +12,11 @@ namespace com.defrobo.cryptopals.runner
     {
         static void Main(string[] args)
         {
-
-
-
+            var payload = ":admin<true";
+            var encrypted = Crypto.CBCBitflipOracle(payload);
+            encrypted[16] ^= 0x01;
+            encrypted[22] ^= 0x01;
+            Console.WriteLine(Crypto.IsAdmin(encrypted));
         }
     }
 } 

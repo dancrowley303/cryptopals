@@ -87,7 +87,16 @@ namespace com.defrobo.cryptopals.tests
                 var invalidPadding = "ICE ICE BABY\x01\x02\x03\x04";
                 Crypto.StripPadding(Encoding.UTF8.GetBytes(invalidPadding));
             });
+        }
 
+        [Test]
+        public void Challenge16()
+        {
+            var payload = ":admin<true";
+            var encrypted = Crypto.CBCBitflipOracle(payload);
+            encrypted[16] ^= 0x01;
+            encrypted[22] ^= 0x01;
+            Assert.IsTrue(Crypto.IsAdmin(encrypted));
         }
 
     }

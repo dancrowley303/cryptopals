@@ -594,5 +594,41 @@ namespace com.defrobo.cryptopals
             }
             return output;
         }
+
+        public static byte[] CBCBitflipOracle(string payload)
+        {
+            var prefix = "comment1=cooking%20MCs;userdata=";
+            var suffix = ";comment2=%20like%20a%20pound%20of%20bacon";
+            //note that if you Escape all values you can't bitflip attack
+            //payload = Uri.EscapeDataString(payload)
+            payload = payload.Replace(";", "%3b").Replace("=", "%3d");
+            var newSource = string.Concat(prefix, payload, suffix);
+            var paddedSource = Pad16(Encoding.UTF8.GetBytes(newSource));
+            var iv = Encoding.UTF8.GetBytes("YELLOW SUBMARINE");
+            return AES128.EncryptCBC(paddedSource, randomKey, iv);
+        }
+
+        private static byte[] Pad16(byte[] unpadded)
+        {
+            if (unpadded.Length % 16 == 0) return unpadded;
+            return BlockPad(unpadded, unpadded.Length + 16 - unpadded.Length % 16);
+        }
+
+        public static bool IsAdmin(byte[] encrypted)
+        {
+            var iv = Encoding.UTF8.GetBytes("YELLOW SUBMARINE");
+            var decrypted = AES128.DecryptCBC(encrypted, randomKey, iv);
+            var items = Encoding.UTF8.GetString(decrypted).Split(';');
+            var dict = new Dictionary<string, string>();
+            foreach(var item in items)
+            {
+                var keyValSplit = item.Split('=');
+                var val = Encoding.UTF8.GetString(StripPadding(Encoding.UTF8.GetBytes(keyValSplit[1])));
+                dict.Add(keyValSplit[0], Uri.UnescapeDataString(val));
+            }
+            string isAdmin;
+            dict.TryGetValue("admin", out isAdmin);
+            return bool.Parse(isAdmin ?? bool.FalseString);
+        }
     }
 }
